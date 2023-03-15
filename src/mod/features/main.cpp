@@ -14,4 +14,5 @@ void exl_features_main() {
 
     exl_settings_main();
     exl_ability_changes_main();
+    exl_badge_check_main();
 }

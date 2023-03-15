@@ -146,6 +146,10 @@ struct PlayerWork : IlClass<PlayerWork> {
         external<void>(0x02cee520, mapID, warpID);
     }
 
+    static inline bool GetSystemFlag(int32_t index) {
+        external<bool>(0x02ceda30, index);
+    }
+
     static inline void SetMoney(int32_t money) {
         external<void>(0x02cefc80, money);
     }
