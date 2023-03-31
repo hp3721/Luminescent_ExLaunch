@@ -264,9 +264,27 @@ static Window mainWindow = Window::single([](Window &_) {
         });
 
         _.Button([](Button &_) {
-            _.label = "Dump save to SD";
+            _.label = "Delete custom save backup";
             _.onClick = []() {
-                FsHelper::writeFileToPath(getCustomSaveData(), sizeof(CustomSaveData), "sd:/SigPlat_Custom_Savedata.bin");
+                if (nn::fs::DeleteFile("SaveData:/Custom_Backup.bin").isSuccess()) {
+                    Logger::log("Deleted custom save backup\n");
+                } else {
+                    Logger::log("Failed to delete custom save backup\n");
+                }
+            };
+        });
+
+        _.Button([](Button &_) {
+            _.label = "Dump custom save to SD";
+            _.onClick = []() {
+                FsHelper::writeFileToPath(getCustomSaveData(), sizeof(CustomSaveData), "sd:/Custom.bin");
+            };
+        });
+
+        _.Button([](Button &_) {
+            _.label = "Dump custom save backup to SD";
+            _.onClick = []() {
+                FsHelper::writeFileToPath(getCustomSaveData(), sizeof(CustomSaveData), "sd:/Custom_Backup.bin");
             };
         });
     });

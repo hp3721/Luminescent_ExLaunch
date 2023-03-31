@@ -17,9 +17,27 @@ CustomSaveData* getCustomSaveData() {
     return &gCustomSaveData;
 }
 
-void save_custom_data(void* buffer) {
+void save_buffer_to_custom_data(void* buffer) {
     Logger::log("Saving custom save data.\n");
     memcpy(buffer, &gCustomSaveData, sizeof(CustomSaveData));
+}
+
+void save_custom_data(PlayerWork::Object* playerWork) {
+    Logger::log("Saving! Main: %d, Backup: %d\n", ((char*)playerWork)[0x828], ((char*)playerWork)[0x829]);
+
+    if (((char*)playerWork)[0x828]) {  // _isMainSave
+        char buffer[sizeof(CustomSaveData)];
+        save_buffer_to_custom_data(buffer);
+        FsHelper::writeFileToPath(buffer, sizeof(buffer), "SaveData:/Custom.bin");
+    }
+    
+    if (((char*)playerWork)[0x829]) {  // _isBackupSave
+        char buffer[sizeof(CustomSaveData)];
+        save_buffer_to_custom_data(buffer);
+        FsHelper::writeFileToPath(buffer, sizeof(buffer), "SaveData:/Custom_Backup.bin");
+    }
+
+    // TODO: Restore Playerwork to use default sizes
 }
 
 void load_custom_data(void* buffer, PlayerWork::Object* playerWork) {
@@ -61,8 +79,10 @@ void load_default_custom_data(PlayerWork::Object* playerWork) {
 HOOK_DEFINE_TRAMPOLINE(PatchExistingSaveData__Load) {
     static bool Callback(PlayerWork::Object* playerWork) {
         bool success = Orig(playerWork);
+
         if (success) {
             const char* fileToLoad;
+            Logger::log("Loading! Main: %d, Backup: %d\n", ((char*)playerWork)[0x828], ((char*)playerWork)[0x829]);
             if (!((char*)playerWork)[0x829]) {
                 fileToLoad = "SaveData:/Custom.bin";
             } else {
@@ -94,21 +114,14 @@ HOOK_DEFINE_TRAMPOLINE(PatchExistingSaveData__Load) {
 HOOK_DEFINE_TRAMPOLINE(PatchExistingSaveData__Save) {
     static void Callback(PlayerWork::Object* playerWork) {
         Orig(playerWork);
-        
-        if (((char*)playerWork)[0x828]) {  // _isMainSave
-            char buffer[sizeof(CustomSaveData)];
-            save_custom_data(buffer);
-            FsHelper::writeFileToPath(buffer, sizeof(buffer), "SaveData:/Custom.bin");
-        }
-        
-        if (((char*)playerWork)[0x829]) {  // _isBackupSave
-            char buffer[sizeof(CustomSaveData)];
-            save_custom_data(buffer);
-            FsHelper::writeFileToPath(buffer, sizeof(buffer), "SaveData:/Custom_Backup.bin");
-        }
+        save_custom_data(playerWork);
+    }
+};
 
-        // TODO: Restore Playerwork to use default sizes
-        
+HOOK_DEFINE_TRAMPOLINE(PatchExistingSaveData__SaveAsync) {
+    static void Callback(PlayerWork::Object* playerWork) {
+        Orig(playerWork);
+        save_custom_data(playerWork);
     }
 };
 
@@ -118,16 +131,24 @@ HOOK_DEFINE_REPLACE(PatchExistingSaveData__Verify) {
     }
 };
 
+HOOK_DEFINE_REPLACE(DoNothingSaveHash) {
+    static void Callback(System_Byte_array* playerWork) {
+        return;
+    }
+};
+
 void exl_save_main() {
     PatchExistingSaveData__Load::InstallAtOffset(0x02ceb850);
 #ifndef DEBUG_DISABLE_SAVE  // Allow disabling the saving to test the save migration code
-    PatchExistingSaveData__Save::InstallAtOffset(0x02cec400);
+    PatchExistingSaveData__SaveAsync::InstallAtOffset(0x02cec400);
     PatchExistingSaveData__Save::InstallAtOffset(0x02cebf00);
 #endif
     PatchExistingSaveData__Verify::InstallAtOffset(0x02ceba00);
 
-    exl::patch::CodePatcher p1(0x02cebfcc);
-    p1.WriteInst(exl::armv8::inst::Nop());
-    exl::patch::CodePatcher p2(0x02ceb9dc);
-    p2.WriteInst(exl::armv8::inst::Nop());
+    DoNothingSaveHash::InstallAtOffset(0x02cebff0);
+
+    exl::patch::CodePatcher p(0x02cebfcc);
+    p.WriteInst(exl::armv8::inst::Nop());
+    p.Seek(0x02ceb9dc);
+    p.WriteInst(exl::armv8::inst::Nop());
 }

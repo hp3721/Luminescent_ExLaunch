@@ -143,8 +143,8 @@ struct PlayerWork : IlClass<PlayerWork, 0x04c59b58> {
         return external<DPData::ZUKAN_WORK::Object*>(0x02cf1040);
     }
 
-    static inline DPData::TR_BATTLE_DATA::Array** get_tr_battleData() {
-        return external<DPData::TR_BATTLE_DATA::Array**>(0x02cf1bd0);
+    static inline DPData::TR_BATTLE_DATA::Array* get_tr_battleData() {
+        return external<DPData::TR_BATTLE_DATA::Array*>(0x02cf1bd0);
     }
 
     static inline void SetWarpSorawotobu(int32_t mapID, int32_t warpID) {
